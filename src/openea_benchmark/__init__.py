@@ -4,6 +4,13 @@ OpenEA-Benchmark scientific workflow infrastructure.
 No production electron-affinity method is frozen yet.
 """
 
+from .branch_continuity import (
+    BranchComparison,
+    BranchRelation,
+    BranchThresholds,
+    classify_branch_metrics,
+    compare_branch_roots,
+)
 from .checkpoint_fingerprint import (
     CheckpointAuditSettings,
     CheckpointDeduplicationResult,
@@ -40,6 +47,9 @@ from .state_identity import (
 )
 
 __all__ = [
+    "BranchComparison",
+    "BranchRelation",
+    "BranchThresholds",
     "CheckpointAuditSettings",
     "CheckpointDeduplicationResult",
     "CheckpointFingerprintAudit",
@@ -57,6 +67,8 @@ __all__ = [
     "StateFingerprint",
     "StateRelation",
     "build_molecule",
+    "classify_branch_metrics",
+    "compare_branch_roots",
     "classify_metrics",
     "compare_states",
     "deduplicate_checkpoint_roots",
