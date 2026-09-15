@@ -312,6 +312,36 @@ def _checkpoint_path(
     )
 
 
+def _write_final_checkpoint(
+    mf,
+    checkpoint: Path | None,
+) -> None:
+    """
+    Explicitly persist the final SCF solution.
+
+    PySCF writes intermediate SCF information during ordinary kernels, but
+    OpenEA requires the checkpoint referenced by SCFRootRecord to represent
+    the final post-rescue/post-stability solution.
+
+    The explicit dump avoids relying on implementation details of wrapper
+    objects returned by Newton/stability-follow calculations.
+    """
+    if checkpoint is None:
+        return
+
+    from pyscf.scf import chkfile
+
+    chkfile.dump_scf(
+        mf.mol,
+        str(checkpoint),
+        float(mf.e_tot),
+        mf.mo_energy,
+        mf.mo_coeff,
+        mf.mo_occ,
+        overwrite_mol=True,
+    )
+
+
 def _new_mean_field(
     mol,
     method: DFTMethodSpec,
@@ -934,6 +964,27 @@ def run_scf_attempt(
             SCFRunStatus.CONVERGED
         )
 
+    checkpoint_for_record = checkpoint
+
+    if checkpoint is not None:
+        try:
+            _write_final_checkpoint(
+                final_mf,
+                checkpoint,
+            )
+
+        except Exception as exc:
+            diagnostics.append(
+                "final checkpoint write raised "
+                f"{type(exc).__name__}: {exc}"
+            )
+
+            #
+            # Never expose a possibly stale checkpoint as if it represented
+            # the final root.
+            #
+            checkpoint_for_record = None
+
     return SCFRootRecord(
         root_id=root_id,
         molecule=spec.label,
@@ -963,8 +1014,8 @@ def run_scf_attempt(
             observed_multiplicity
         ),
         checkpoint_path=(
-            str(checkpoint)
-            if checkpoint is not None
+            str(checkpoint_for_record)
+            if checkpoint_for_record is not None
             else None
         ),
         diagnostic_message="; ".join(
