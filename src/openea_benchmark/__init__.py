@@ -4,6 +4,12 @@ OpenEA-Benchmark scientific workflow infrastructure.
 No production electron-affinity method is frozen yet.
 """
 
+from .branch_graph import (
+    BranchComponent,
+    BranchGraph,
+    build_branch_graph,
+    build_branch_graph_from_comparisons,
+)
 from .branch_continuity import (
     BranchComparison,
     BranchRelation,
@@ -47,6 +53,8 @@ from .state_identity import (
 )
 
 __all__ = [
+    "BranchComponent",
+    "BranchGraph",
     "BranchComparison",
     "BranchRelation",
     "BranchThresholds",
@@ -66,6 +74,8 @@ __all__ = [
     "StateComparison",
     "StateFingerprint",
     "StateRelation",
+    "build_branch_graph",
+    "build_branch_graph_from_comparisons",
     "build_molecule",
     "classify_branch_metrics",
     "compare_branch_roots",
