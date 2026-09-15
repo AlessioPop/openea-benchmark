@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openea-benchmark"
+version = "0.1.0.dev0"
+description = "Open-source adaptive benchmark workflow for high-accuracy diatomic electron affinities"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-only"
+
+[tool.setuptools.packages.find]
+where = ["src"]
