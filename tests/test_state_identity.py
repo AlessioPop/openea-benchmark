@@ -29,11 +29,15 @@ TEST_THRESHOLDS = IdentityThresholds(
     same_delta_s2=0.01,
     same_total_spectrum_max=0.01,
     same_spin_spectrum_max=0.01,
+    same_total_density_rel_fro=0.01,
+    same_spin_density_rel_fro=0.01,
 
     distinct_energy_mev=10.0,
     distinct_delta_s2=0.10,
     distinct_total_spectrum_max=0.10,
     distinct_spin_spectrum_max=0.10,
+    distinct_total_density_rel_fro=0.10,
+    distinct_spin_density_rel_fro=0.10,
 )
 
 
@@ -118,6 +122,40 @@ def make_fingerprint(
             0.0,
             -0.8,
         ),
+        total_density_orth=(
+            (
+                1.8 + shift,
+                0.0,
+                0.0,
+            ),
+            (
+                0.0,
+                0.2,
+                0.0,
+            ),
+            (
+                0.0,
+                0.0,
+                0.0,
+            ),
+        ),
+        spin_density_orth=(
+            (
+                0.8 + shift,
+                0.0,
+                0.0,
+            ),
+            (
+                0.0,
+                0.0,
+                0.0,
+            ),
+            (
+                0.0,
+                0.0,
+                -0.8,
+            ),
+        ),
         total_trace=2.0 + shift,
         spin_trace=shift,
     )
@@ -143,10 +181,14 @@ class IdentityThresholdTests(
                 same_delta_s2=0.01,
                 same_total_spectrum_max=0.01,
                 same_spin_spectrum_max=0.01,
+                same_total_density_rel_fro=0.01,
+                same_spin_density_rel_fro=0.01,
                 distinct_energy_mev=10.0,
                 distinct_delta_s2=0.10,
                 distinct_total_spectrum_max=0.10,
                 distinct_spin_spectrum_max=0.10,
+                distinct_total_density_rel_fro=0.10,
+                distinct_spin_density_rel_fro=0.10,
             )
 
 
@@ -253,6 +295,8 @@ class PairwiseIdentityTests(
             delta_s2=0.002,
             total_spectrum_max=0.003,
             spin_spectrum_max=0.004,
+            total_density_rel_fro=0.004,
+            spin_density_rel_fro=0.004,
             thresholds=TEST_THRESHOLDS,
         )
 
@@ -268,6 +312,8 @@ class PairwiseIdentityTests(
             delta_s2=0.0,
             total_spectrum_max=0.0,
             spin_spectrum_max=0.0,
+            total_density_rel_fro=0.0,
+            spin_density_rel_fro=0.0,
             thresholds=TEST_THRESHOLDS,
         )
 
@@ -283,6 +329,8 @@ class PairwiseIdentityTests(
             delta_s2=0.0,
             total_spectrum_max=0.0,
             spin_spectrum_max=0.0,
+            total_density_rel_fro=0.0,
+            spin_density_rel_fro=0.0,
             thresholds=TEST_THRESHOLDS,
         )
 
@@ -298,12 +346,237 @@ class PairwiseIdentityTests(
             delta_s2=0.0,
             total_spectrum_max=0.20,
             spin_spectrum_max=0.0,
+            total_density_rel_fro=0.0,
+            spin_density_rel_fro=0.0,
             thresholds=TEST_THRESHOLDS,
         )
 
         self.assertEqual(
             relation,
             StateRelation.DISTINCT_STATE,
+        )
+
+    def test_isospectral_rotated_density_is_not_same_state(self):
+        #
+        # These two densities have exactly the same eigenvalues but their
+        # occupied density subspaces point in different directions.
+        #
+        dm_a = np.zeros(
+            (
+                2,
+                3,
+                3,
+            )
+        )
+
+        dm_a[0] = np.diag(
+            (
+                1.0,
+                0.0,
+                0.0,
+            )
+        )
+
+        dm_a[1] = np.diag(
+            (
+                1.0,
+                0.0,
+                0.0,
+            )
+        )
+
+        dm_b = np.zeros_like(
+            dm_a
+        )
+
+        dm_b[0] = np.diag(
+            (
+                0.0,
+                1.0,
+                0.0,
+            )
+        )
+
+        dm_b[1] = np.diag(
+            (
+                0.0,
+                1.0,
+                0.0,
+            )
+        )
+
+        fp_a = (
+            fingerprint_from_orthonormal_density(
+                dm_a
+            )
+        )
+
+        fp_b = (
+            fingerprint_from_orthonormal_density(
+                dm_b
+            )
+        )
+
+        self.assertEqual(
+            fp_a.total_spectrum,
+            fp_b.total_spectrum,
+        )
+
+        a = make_root(
+            "a",
+            energy_mev=0.0,
+            spin_2s=0,
+            s2=0.0,
+        )
+
+        b = make_root(
+            "b",
+            energy_mev=20.0,
+            spin_2s=0,
+            s2=0.0,
+        )
+
+        comparison = compare_states(
+            a,
+            fp_a,
+            b,
+            fp_b,
+            thresholds=TEST_THRESHOLDS,
+        )
+
+        self.assertAlmostEqual(
+            comparison.total_spectrum_max,
+            0.0,
+        )
+
+        self.assertGreater(
+            comparison.total_density_rel_fro,
+            TEST_THRESHOLDS.distinct_total_density_rel_fro,
+        )
+
+        self.assertEqual(
+            comparison.relation,
+            StateRelation.DISTINCT_STATE,
+        )
+
+    def test_common_ao_rotation_preserves_density_distance(self):
+        dm_a = np.zeros(
+            (
+                2,
+                3,
+                3,
+            )
+        )
+
+        dm_b = np.zeros_like(
+            dm_a
+        )
+
+        dm_a[0] = np.diag(
+            (
+                1.0,
+                0.3,
+                0.0,
+            )
+        )
+
+        dm_a[1] = np.diag(
+            (
+                0.8,
+                0.1,
+                0.0,
+            )
+        )
+
+        dm_b[0] = np.diag(
+            (
+                0.9,
+                0.4,
+                0.0,
+            )
+        )
+
+        dm_b[1] = np.diag(
+            (
+                0.7,
+                0.2,
+                0.0,
+            )
+        )
+
+        angle = 0.43
+
+        q = np.array(
+            [
+                [
+                    np.cos(angle),
+                    -np.sin(angle),
+                    0.0,
+                ],
+                [
+                    np.sin(angle),
+                    np.cos(angle),
+                    0.0,
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0,
+                ],
+            ]
+        )
+
+        def rotate(dm):
+            return np.stack(
+                (
+                    q @ dm[0] @ q.T,
+                    q @ dm[1] @ q.T,
+                )
+            )
+
+        a1 = make_root(
+            "a1"
+        )
+
+        b1 = make_root(
+            "b1",
+            energy_mev=3.0,
+        )
+
+        before = compare_states(
+            a1,
+            fingerprint_from_orthonormal_density(
+                dm_a
+            ),
+            b1,
+            fingerprint_from_orthonormal_density(
+                dm_b
+            ),
+            thresholds=TEST_THRESHOLDS,
+        )
+
+        after = compare_states(
+            a1,
+            fingerprint_from_orthonormal_density(
+                rotate(dm_a)
+            ),
+            b1,
+            fingerprint_from_orthonormal_density(
+                rotate(dm_b)
+            ),
+            thresholds=TEST_THRESHOLDS,
+        )
+
+        self.assertAlmostEqual(
+            before.total_density_rel_fro,
+            after.total_density_rel_fro,
+            places=12,
+        )
+
+        self.assertAlmostEqual(
+            before.spin_density_rel_fro,
+            after.spin_density_rel_fro,
+            places=12,
         )
 
     def test_compare_states_rejects_different_geometry(self):

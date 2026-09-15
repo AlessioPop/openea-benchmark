@@ -56,11 +56,15 @@ class IdentityThresholds:
     same_delta_s2: float
     same_total_spectrum_max: float
     same_spin_spectrum_max: float
+    same_total_density_rel_fro: float
+    same_spin_density_rel_fro: float
 
     distinct_energy_mev: float
     distinct_delta_s2: float
     distinct_total_spectrum_max: float
     distinct_spin_spectrum_max: float
+    distinct_total_density_rel_fro: float
+    distinct_spin_density_rel_fro: float
 
     def __post_init__(self) -> None:
         values = (
@@ -68,10 +72,14 @@ class IdentityThresholds:
             self.same_delta_s2,
             self.same_total_spectrum_max,
             self.same_spin_spectrum_max,
+            self.same_total_density_rel_fro,
+            self.same_spin_density_rel_fro,
             self.distinct_energy_mev,
             self.distinct_delta_s2,
             self.distinct_total_spectrum_max,
             self.distinct_spin_spectrum_max,
+            self.distinct_total_density_rel_fro,
+            self.distinct_spin_density_rel_fro,
         )
 
         if any(
@@ -104,6 +112,16 @@ class IdentityThresholds:
                 self.same_spin_spectrum_max,
                 self.distinct_spin_spectrum_max,
             ),
+            (
+                "total_density_rel_fro",
+                self.same_total_density_rel_fro,
+                self.distinct_total_density_rel_fro,
+            ),
+            (
+                "spin_density_rel_fro",
+                self.same_spin_density_rel_fro,
+                self.distinct_spin_density_rel_fro,
+            ),
         )
 
         for name, same, distinct in pairs:
@@ -133,6 +151,16 @@ class StateFingerprint:
 
     total_spectrum: tuple[float, ...]
     spin_spectrum: tuple[float, ...]
+
+    total_density_orth: tuple[
+        tuple[float, ...],
+        ...,
+    ]
+    spin_density_orth: tuple[
+        tuple[float, ...],
+        ...,
+    ]
+
     total_trace: float
     spin_trace: float
 
@@ -150,9 +178,53 @@ class StateFingerprint:
                 "total and spin spectra must have equal length"
             )
 
+        n = len(
+            self.total_spectrum
+        )
+
+        if len(
+            self.total_density_orth
+        ) != n:
+            raise ValueError(
+                "total density dimension must match spectrum"
+            )
+
+        if len(
+            self.spin_density_orth
+        ) != n:
+            raise ValueError(
+                "spin density dimension must match spectrum"
+            )
+
+        if any(
+            len(row) != n
+            for row in self.total_density_orth
+        ):
+            raise ValueError(
+                "total_density_orth must be square"
+            )
+
+        if any(
+            len(row) != n
+            for row in self.spin_density_orth
+        ):
+            raise ValueError(
+                "spin_density_orth must be square"
+            )
+
         numbers = (
             *self.total_spectrum,
             *self.spin_spectrum,
+            *(
+                value
+                for row in self.total_density_orth
+                for value in row
+            ),
+            *(
+                value
+                for row in self.spin_density_orth
+                for value in row
+            ),
             self.total_trace,
             self.spin_trace,
         )
@@ -179,6 +251,9 @@ class StateComparison:
 
     spin_spectrum_max: float
     spin_spectrum_l2: float
+
+    total_density_rel_fro: float
+    spin_density_rel_fro: float
 
     relation: StateRelation
 
@@ -293,6 +368,20 @@ def fingerprint_from_orthonormal_density(
             float(x)
             for x in spin_spectrum
         ),
+        total_density_orth=tuple(
+            tuple(
+                float(x)
+                for x in row
+            )
+            for row in total
+        ),
+        spin_density_orth=tuple(
+            tuple(
+                float(x)
+                for x in row
+            )
+            for row in spin
+        ),
         total_trace=float(
             np.trace(total)
         ),
@@ -328,6 +417,67 @@ def _spectrum_distances(
     )
 
 
+def _relative_frobenius_distance(
+    a,
+    b,
+) -> float:
+    """
+    Symmetric relative Frobenius distance.
+
+    For matrices A and B,
+
+        d = 2 ||A-B||_F / (||A||_F + ||B||_F).
+
+    If both matrices have zero Frobenius norm, d is defined as zero.
+
+    The metric is invariant under a common orthogonal transformation of the
+    orthonormal AO representation.  Unlike an eigenvalue spectrum alone, it
+    remains sensitive to differently oriented occupied/density subspaces.
+    """
+    aa = np.asarray(
+        a,
+        dtype=float,
+    )
+
+    bb = np.asarray(
+        b,
+        dtype=float,
+    )
+
+    if aa.shape != bb.shape:
+        raise ValueError(
+            "density matrix dimensions differ"
+        )
+
+    if aa.ndim != 2:
+        raise ValueError(
+            "density matrices must be two-dimensional"
+        )
+
+    numerator = 2.0 * float(
+        np.linalg.norm(
+            aa - bb,
+            ord="fro",
+        )
+    )
+
+    denominator = float(
+        np.linalg.norm(
+            aa,
+            ord="fro",
+        )
+        + np.linalg.norm(
+            bb,
+            ord="fro",
+        )
+    )
+
+    if denominator == 0.0:
+        return 0.0
+
+    return numerator / denominator
+
+
 def classify_metrics(
     *,
     same_spin: bool,
@@ -335,6 +485,8 @@ def classify_metrics(
     delta_s2: float,
     total_spectrum_max: float,
     spin_spectrum_max: float,
+    total_density_rel_fro: float,
+    spin_density_rel_fro: float,
     thresholds: IdentityThresholds,
 ) -> StateRelation:
     """
@@ -362,6 +514,8 @@ def classify_metrics(
         delta_s2,
         total_spectrum_max,
         spin_spectrum_max,
+        total_density_rel_fro,
+        spin_density_rel_fro,
     )
 
     if any(
@@ -388,6 +542,14 @@ def classify_metrics(
         float(spin_spectrum_max)
     )
 
+    dtotal_density = abs(
+        float(total_density_rel_fro)
+    )
+
+    dspin_density = abs(
+        float(spin_density_rel_fro)
+    )
+
     if (
         de <= thresholds.same_energy_mev
         and ds2 <= thresholds.same_delta_s2
@@ -395,6 +557,10 @@ def classify_metrics(
         <= thresholds.same_total_spectrum_max
         and dspin
         <= thresholds.same_spin_spectrum_max
+        and dtotal_density
+        <= thresholds.same_total_density_rel_fro
+        and dspin_density
+        <= thresholds.same_spin_density_rel_fro
     ):
         return StateRelation.SAME_STATE
 
@@ -405,6 +571,10 @@ def classify_metrics(
         >= thresholds.distinct_total_spectrum_max
         or dspin
         >= thresholds.distinct_spin_spectrum_max
+        or dtotal_density
+        >= thresholds.distinct_total_density_rel_fro
+        or dspin_density
+        >= thresholds.distinct_spin_density_rel_fro
     )
 
     if (
@@ -500,6 +670,20 @@ def compare_states(
         )
     )
 
+    total_density_rel_fro = (
+        _relative_frobenius_distance(
+            fingerprint_a.total_density_orth,
+            fingerprint_b.total_density_orth,
+        )
+    )
+
+    spin_density_rel_fro = (
+        _relative_frobenius_distance(
+            fingerprint_a.spin_density_orth,
+            fingerprint_b.spin_density_orth,
+        )
+    )
+
     de_mev = abs(
         float(
             b.energy_hartree
@@ -522,6 +706,12 @@ def compare_states(
         delta_s2=ds2,
         total_spectrum_max=total_max,
         spin_spectrum_max=spin_max,
+        total_density_rel_fro=(
+            total_density_rel_fro
+        ),
+        spin_density_rel_fro=(
+            spin_density_rel_fro
+        ),
         thresholds=thresholds,
     )
 
@@ -534,6 +724,12 @@ def compare_states(
         total_spectrum_l2=total_l2,
         spin_spectrum_max=spin_max,
         spin_spectrum_l2=spin_l2,
+        total_density_rel_fro=(
+            total_density_rel_fro
+        ),
+        spin_density_rel_fro=(
+            spin_density_rel_fro
+        ),
         relation=relation,
     )
 
