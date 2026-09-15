@@ -18,6 +18,7 @@ def make_record(**overrides):
         basis="ma-def2-tzvpp",
         origin_guess="minao",
         scf_path="standard",
+        reference="UKS",
         status=SCFRunStatus.CANONICALIZED,
         energy_hartree=-1264.0,
         internal_stable=True,
@@ -151,6 +152,26 @@ class RootRecordTests(unittest.TestCase):
         self.assertIn(
             "did not converge",
             root.diagnostic_message,
+        )
+
+    def test_reference_and_ecp_provenance_are_preserved(self):
+        root = make_record(
+            reference="UKS",
+            ecp_assignments=(
+                ("Nb", "def2-tzvpp"),
+            ),
+        )
+
+        self.assertEqual(
+            root.reference,
+            "UKS",
+        )
+
+        self.assertEqual(
+            root.ecp_assignments,
+            (
+                ("Nb", "def2-tzvpp"),
+            ),
         )
 
     def test_geometry_must_be_positive_and_finite(self):

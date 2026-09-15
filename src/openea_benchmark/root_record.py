@@ -37,7 +37,7 @@ class SCFRootRecord:
 
         spin = N_alpha - N_beta = 2S.
 
-    The record stores evidence.  It does not decide whether the solution is
+    The record stores evidence. It does not decide whether the solution is
     the physical ground state or whether SR/MR escalation is required.
     """
 
@@ -53,6 +53,7 @@ class SCFRootRecord:
 
     origin_guess: str
     scf_path: str
+    reference: str
 
     status: SCFRunStatus
 
@@ -68,15 +69,26 @@ class SCFRootRecord:
     checkpoint_path: str | None = None
     diagnostic_message: str = ""
 
+    ecp_assignments: tuple[
+        tuple[str, str],
+        ...,
+    ] = ()
+
     def __post_init__(self) -> None:
         if not self.root_id.strip():
-            raise ValueError("root_id must be non-empty")
+            raise ValueError(
+                "root_id must be non-empty"
+            )
 
         if not self.molecule.strip():
-            raise ValueError("molecule must be non-empty")
+            raise ValueError(
+                "molecule must be non-empty"
+            )
 
         if self.spin_2s < 0:
-            raise ValueError("spin_2s must be >= 0")
+            raise ValueError(
+                "spin_2s must be >= 0"
+            )
 
         if (
             not isfinite(self.r_angstrom)
@@ -106,17 +118,25 @@ class SCFRootRecord:
                 "scf_path must be non-empty"
             )
 
+        if not self.reference.strip():
+            raise ValueError(
+                "reference must be non-empty"
+            )
+
         if self.status != SCFRunStatus.FAILED:
             if (
                 self.energy_hartree is None
-                or not isfinite(self.energy_hartree)
+                or not isfinite(
+                    self.energy_hartree
+                )
             ):
                 raise ValueError(
                     "converged roots require a finite energy"
                 )
 
         if (
-            self.status == SCFRunStatus.CANONICALIZED
+            self.status
+            == SCFRunStatus.CANONICALIZED
             and self.internal_stable is not True
         ):
             raise ValueError(
@@ -142,6 +162,26 @@ class SCFRootRecord:
                     f"{name} must be finite when provided"
                 )
 
+        seen_elements: set[str] = set()
+
+        for element, ecp_name in self.ecp_assignments:
+            if not element.strip():
+                raise ValueError(
+                    "ECP element names must be non-empty"
+                )
+
+            if not ecp_name.strip():
+                raise ValueError(
+                    "ECP names must be non-empty"
+                )
+
+            if element in seen_elements:
+                raise ValueError(
+                    f"duplicate ECP assignment for {element}"
+                )
+
+            seen_elements.add(element)
+
     @property
     def nominal_spin_s(self) -> float:
         return self.spin_2s / 2.0
@@ -160,7 +200,7 @@ class SCFRootRecord:
         """
         Return <S^2> - S(S+1).
 
-        This quantity is diagnostic only.  A nonzero value does not by
+        This quantity is diagnostic only. A nonzero value does not by
         itself invalidate, relabel, or discard the SCF root.
         """
         if self.s2 is None:

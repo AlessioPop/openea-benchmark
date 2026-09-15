@@ -9,6 +9,9 @@ description = "Open-source adaptive benchmark workflow for high-accuracy diatomi
 readme = "README.md"
 requires-python = ">=3.11"
 license = "GPL-3.0-only"
+dependencies = [
+    "pyscf==2.14.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
