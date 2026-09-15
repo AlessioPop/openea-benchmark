@@ -44,3 +44,6 @@ nohup.out
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local benchmark result bundles
+*_results.tar.gz

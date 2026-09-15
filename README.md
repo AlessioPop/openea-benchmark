@@ -144,23 +144,62 @@ uncertainty assignment remain unresolved.
 See
 [`provenance/CAPABILITY_GATE_003.md`](provenance/CAPABILITY_GATE_003.md).
 
+## DFT scout-method validation
+
+The project has now completed a first empirical validation series for the
+inexpensive DFT state-discovery layer.
+
+The gates tested:
+
+- functional availability and semantics;
+- SCF stability;
+- basis-set sensitivity;
+- transition-metal spin-state ordering;
+- multiple SCF roots;
+- stability canonicalization;
+- occupied-space projection between basis sets;
+- broken-symmetry behavior;
+- generic SCF rescue.
+
+The current provisional development panel retains `r2SCAN`, `r2SCANh`, and
+`PBE0`.
+
+`ma-def2-TZVPP` is the leading broadly available Tier-0 scout-basis candidate,
+with `aug-pcseg-2` retained as an independent 3d cross-check and
+`def2-QZVPPD` as an anchor/refinement basis.
+
+These choices are not yet frozen production policy.
+
+The validation also established that SCF convergence alone is insufficient:
+state continuity, stability, spin contamination, and root identity must remain
+explicit workflow diagnostics.
+
+See [`provenance/DFT_SCOUT_VALIDATION_001.md`](provenance/DFT_SCOUT_VALIDATION_001.md).
+
 ## Current scientific status
 
 The project has now established:
 
 - an open-source higher-order single-reference coupled-cluster capability;
 - a verified OpenMolcas multireference / spin-orbit software baseline;
-- molecule-level CASSCF, CASPT2, RASSI, and SOC scientific capability.
+- molecule-level CASSCF, CASPT2, RASSI, and SOC scientific capability;
+- an empirically tested DFT scout strategy for state discovery and basis/root
+  continuity.
 
-The next development stage is formal scientific-method specification and
-validation-matrix design.
+The next development stage is **DFT-0C**, the first tested implementation of
+the DFT state-discovery and local-PEC workflow.
+
+DFT-0C will initially cover candidate spin discovery, multiple generic SCF
+roots, stability canonicalization, root deduplication, state/branch identity,
+local PEC construction, geometry scouting, and preliminary delta-SCF
+electron-affinity diagnostics on a small validation subset.
 
 Important production decisions remain deliberately unresolved, including the
-single-reference versus multireference escalation logic, active-space policy,
-state averaging, CASPT2 variant and intruder-state handling, basis-set
+final DFT panel and basis policy, single-reference versus multireference
+escalation logic, active-space policy, state averaging, correlated basis-set
 convergence, core-valence and relativistic corrections, SOC treatment for
-electron affinities, PEC correction strategies, nuclear motion, and
-uncertainty assignment.
+electron affinities, PEC correction strategies, nuclear motion, and uncertainty
+assignment.
 
 No prediction calculations begin until those policies and their validation
 criteria have been defined and tested.
