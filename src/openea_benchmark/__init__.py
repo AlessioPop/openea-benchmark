@@ -26,6 +26,14 @@ from .checkpoint_fingerprint import (
     fingerprint_from_checkpoint,
     fingerprints_from_checkpoints,
 )
+from .local_pec import (
+    LocalPEC,
+    LocalPECConstructionResult,
+    LocalPECPoint,
+    LocalPECRejectionReason,
+    RejectedLocalPECComponent,
+    construct_local_pecs,
+)
 from .pyscf_backend import (
     DEFAULT_GUESSES,
     DFTMethodSpec,
@@ -67,6 +75,11 @@ __all__ = [
     "DeduplicationResult",
     "DiatomicSpec",
     "IdentityThresholds",
+    "LocalPEC",
+    "LocalPECConstructionResult",
+    "LocalPECPoint",
+    "LocalPECRejectionReason",
+    "RejectedLocalPECComponent",
     "RootCluster",
     "SCFRootRecord",
     "SCFRunStatus",
@@ -81,6 +94,7 @@ __all__ = [
     "compare_branch_roots",
     "classify_metrics",
     "compare_states",
+    "construct_local_pecs",
     "deduplicate_checkpoint_roots",
     "deduplicate_roots",
     "fingerprint_from_checkpoint",
