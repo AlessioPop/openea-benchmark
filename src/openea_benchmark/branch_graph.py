@@ -175,6 +175,8 @@ def _root_context(
     """
     return (
         root.molecule,
+        root.atom_a,
+        root.atom_b,
         root.charge,
         root.spin_2s,
         root.functional,
@@ -216,8 +218,9 @@ def _validate_roots(
 
     if len(contexts) != 1:
         raise ValueError(
-            "all roots in one branch graph must share molecule, charge, "
-            "spin sector, functional, basis, reference, and ECP assignment"
+            "all roots in one branch graph must share molecule, atomic "
+            "composition, charge, spin sector, functional, basis, reference, "
+            "and ECP assignment"
         )
 
     return root_by_id

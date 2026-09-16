@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from enum import Enum
 from math import isfinite
 
+from .geometry import canonicalize_r_angstrom
+
 
 class SCFRunStatus(str, Enum):
     """
@@ -74,6 +76,9 @@ class SCFRootRecord:
         ...,
     ] = ()
 
+    atom_a: str = ""
+    atom_b: str = ""
+
     def __post_init__(self) -> None:
         if not self.root_id.strip():
             raise ValueError(
@@ -85,18 +90,43 @@ class SCFRootRecord:
                 "molecule must be non-empty"
             )
 
+        atom_a = str(
+            self.atom_a
+        ).strip()
+
+        atom_b = str(
+            self.atom_b
+        ).strip()
+
+        if bool(atom_a) != bool(atom_b):
+            raise ValueError(
+                "atom_a and atom_b must either both be provided or both omitted"
+            )
+
+        object.__setattr__(
+            self,
+            "atom_a",
+            atom_a,
+        )
+
+        object.__setattr__(
+            self,
+            "atom_b",
+            atom_b,
+        )
+
         if self.spin_2s < 0:
             raise ValueError(
                 "spin_2s must be >= 0"
             )
 
-        if (
-            not isfinite(self.r_angstrom)
-            or self.r_angstrom <= 0.0
-        ):
-            raise ValueError(
-                "r_angstrom must be finite and > 0"
-            )
+        object.__setattr__(
+            self,
+            "r_angstrom",
+            canonicalize_r_angstrom(
+                self.r_angstrom
+            ),
+        )
 
         if not self.functional.strip():
             raise ValueError(
@@ -181,6 +211,16 @@ class SCFRootRecord:
                 )
 
             seen_elements.add(element)
+
+        object.__setattr__(
+            self,
+            "ecp_assignments",
+            tuple(
+                sorted(
+                    self.ecp_assignments
+                )
+            ),
+        )
 
     @property
     def nominal_spin_s(self) -> float:

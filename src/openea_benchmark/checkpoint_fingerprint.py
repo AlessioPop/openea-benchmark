@@ -7,6 +7,11 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
+from .context import (
+    CHECKPOINT_CONTEXT_VERSION,
+    calculation_context,
+    parse_context_json,
+)
 from .root_record import (
     SCFRootRecord,
     SCFRunStatus,
@@ -30,6 +35,7 @@ class CheckpointAuditSettings:
     """
 
     energy_tol_hartree: float = 1.0e-8
+    geometry_tol_angstrom: float = 1.0e-10
     electron_trace_tol: float = 1.0e-7
     spin_trace_tol: float = 1.0e-7
     overlap_eigenvalue_floor: float = 1.0e-10
@@ -37,6 +43,7 @@ class CheckpointAuditSettings:
     def __post_init__(self) -> None:
         values = (
             self.energy_tol_hartree,
+            self.geometry_tol_angstrom,
             self.electron_trace_tol,
             self.spin_trace_tol,
             self.overlap_eigenvalue_floor,
@@ -60,6 +67,10 @@ class CheckpointFingerprintAudit:
     checkpoint_energy_hartree: float
     record_energy_hartree: float
     energy_delta_hartree: float
+
+    checkpoint_r_angstrom: float
+    record_r_angstrom: float
+    geometry_delta_angstrom: float
 
     electron_trace: float
     expected_electron_count: int
@@ -384,6 +395,125 @@ def fingerprint_from_checkpoint(
             "checkpoint spin does not match root record"
         )
 
+    coordinates = np.asarray(
+        mol.atom_coords(
+            unit="Angstrom"
+        ),
+        dtype=float,
+    )
+
+    if coordinates.shape != (2, 3):
+        raise ValueError(
+            "checkpoint molecule is not a diatomic geometry"
+        )
+
+    checkpoint_r = float(
+        np.linalg.norm(
+            coordinates[1]
+            - coordinates[0]
+        )
+    )
+
+    geometry_delta = (
+        checkpoint_r
+        - float(
+            root.r_angstrom
+        )
+    )
+
+    if (
+        abs(geometry_delta)
+        > settings.geometry_tol_angstrom
+    ):
+        raise ValueError(
+            "checkpoint geometry does not match root record: "
+            f"delta={geometry_delta:+.6e} Angstrom"
+        )
+
+    from pyscf import lib
+
+    try:
+        raw_context = (
+            lib.chkfile.load(
+                str(path),
+                "openea/context_json",
+            )
+        )
+    except Exception as exc:
+        raise ValueError(
+            "checkpoint has no valid OpenEA metadata"
+        ) from exc
+
+    metadata = parse_context_json(
+        raw_context
+    )
+
+    schema_version = metadata.get(
+        "schema_version"
+    )
+
+    if (
+        schema_version
+        != CHECKPOINT_CONTEXT_VERSION
+    ):
+        raise ValueError(
+            "checkpoint OpenEA metadata has unsupported schema version"
+        )
+
+    checkpoint_root_id = metadata.get(
+        "root_id"
+    )
+
+    if checkpoint_root_id != root.root_id:
+        raise ValueError(
+            "checkpoint OpenEA context mismatch for root_id"
+        )
+
+    expected_context = (
+        calculation_context(
+            molecule=root.molecule,
+            atom_a=root.atom_a,
+            atom_b=root.atom_b,
+            charge=root.charge,
+            spin_2s=root.spin_2s,
+            r_angstrom=root.r_angstrom,
+            functional=root.functional,
+            basis=root.basis,
+            reference=root.reference,
+            origin_guess=(
+                root.origin_guess
+            ),
+            ecp_assignments=(
+                root.ecp_assignments
+            ),
+        )
+    )
+
+    stored_context = metadata.get(
+        "calculation"
+    )
+
+    if not isinstance(
+        stored_context,
+        dict,
+    ):
+        raise ValueError(
+            "checkpoint OpenEA metadata has no calculation context"
+        )
+
+    for field, expected in (
+        expected_context.items()
+    ):
+        actual = stored_context.get(
+            field
+        )
+
+        if actual != expected:
+            raise ValueError(
+                "checkpoint OpenEA context mismatch for "
+                f"{field}: {actual!r} != {expected!r}"
+            )
+
     if "e_tot" not in scf_data:
         raise ValueError(
             "checkpoint has no e_tot"
@@ -494,6 +624,15 @@ def fingerprint_from_checkpoint(
         ),
         energy_delta_hartree=(
             energy_delta
+        ),
+        checkpoint_r_angstrom=(
+            checkpoint_r
+        ),
+        record_r_angstrom=float(
+            root.r_angstrom
+        ),
+        geometry_delta_angstrom=(
+            geometry_delta
         ),
         electron_trace=(
             electron_trace

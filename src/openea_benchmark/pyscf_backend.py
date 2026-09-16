@@ -6,6 +6,16 @@ from pathlib import Path
 import re
 from typing import Iterable
 
+from .context import (
+    calculation_context,
+    canonical_json,
+    checkpoint_context,
+    context_digest,
+)
+from .geometry import (
+    GEOMETRY_DECIMALS,
+    canonicalize_r_angstrom,
+)
 from .root_record import (
     SCFRootRecord,
     SCFRunStatus,
@@ -51,13 +61,13 @@ class DiatomicSpec:
                 "atom_b must be non-empty"
             )
 
-        if (
-            not isfinite(self.r_angstrom)
-            or self.r_angstrom <= 0.0
-        ):
-            raise ValueError(
-                "r_angstrom must be finite and > 0"
-            )
+        object.__setattr__(
+            self,
+            "r_angstrom",
+            canonicalize_r_angstrom(
+                self.r_angstrom
+            ),
+        )
 
         if self.spin_2s < 0:
             raise ValueError(
@@ -112,6 +122,16 @@ class DFTMethodSpec:
                 )
 
             seen.add(element)
+
+        object.__setattr__(
+            self,
+            "ecp_assignments",
+            tuple(
+                sorted(
+                    self.ecp_assignments
+                )
+            ),
+        )
 
 
 @dataclass(frozen=True)
@@ -276,19 +296,75 @@ def _slug(value: str) -> str:
     return value.strip("_") or "root"
 
 
+def _calculation_context(
+    spec: DiatomicSpec,
+    method: DFTMethodSpec,
+    guess: str,
+) -> dict:
+    return calculation_context(
+        molecule=spec.label,
+        atom_a=spec.atom_a,
+        atom_b=spec.atom_b,
+        charge=spec.charge,
+        spin_2s=spec.spin_2s,
+        r_angstrom=spec.r_angstrom,
+        functional=method.functional,
+        basis=method.basis,
+        reference=_reference_for(
+            spec
+        ),
+        origin_guess=guess,
+        ecp_assignments=(
+            method.ecp_assignments
+        ),
+    )
+
+
+def _ecp_context_tag(
+    method: DFTMethodSpec,
+) -> str:
+    if not method.ecp_assignments:
+        return "none"
+
+    return context_digest(
+        {
+            "ecp_assignments": [
+                list(item)
+                for item
+                in method.ecp_assignments
+            ]
+        }
+    )
+
+
 def _root_id(
     spec: DiatomicSpec,
     method: DFTMethodSpec,
     guess: str,
 ) -> str:
+    context = _calculation_context(
+        spec,
+        method,
+        guess,
+    )
+
+    full_context_tag = (
+        context_digest(
+            context
+        )
+    )
+
     raw = (
         f"{spec.label}"
+        f"__{spec.atom_a}-{spec.atom_b}"
         f"__q{spec.charge:+d}"
         f"__s{spec.spin_2s}"
-        f"__R{spec.r_angstrom:.6f}"
+        f"__R{spec.r_angstrom:.{GEOMETRY_DECIMALS}f}"
         f"__{method.functional}"
         f"__{method.basis}"
+        f"__ecp-{_ecp_context_tag(method)}"
         f"__{guess}"
+        f"__ctx-{full_context_tag}"
     )
 
     return _slug(raw)
@@ -315,20 +391,23 @@ def _checkpoint_path(
 def _write_final_checkpoint(
     mf,
     checkpoint: Path | None,
+    *,
+    spec: DiatomicSpec,
+    method: DFTMethodSpec,
+    root_id: str,
+    guess: str,
 ) -> None:
     """
-    Explicitly persist the final SCF solution.
+    Explicitly persist the final SCF solution and OpenEA scientific context.
 
-    PySCF writes intermediate SCF information during ordinary kernels, but
-    OpenEA requires the checkpoint referenced by SCFRootRecord to represent
-    the final post-rescue/post-stability solution.
-
-    The explicit dump avoids relying on implementation details of wrapper
-    objects returned by Newton/stability-follow calculations.
+    The OpenEA metadata is written into the same HDF5 checkpoint as the
+    final SCF solution. A checkpoint is therefore self-describing with
+    respect to the calculation context from which its SCF root originated.
     """
     if checkpoint is None:
         return
 
+    from pyscf import lib
     from pyscf.scf import chkfile
 
     chkfile.dump_scf(
@@ -339,6 +418,25 @@ def _write_final_checkpoint(
         mf.mo_coeff,
         mf.mo_occ,
         overwrite_mol=True,
+    )
+
+    payload = checkpoint_context(
+        root_id=root_id,
+        calculation=(
+            _calculation_context(
+                spec,
+                method,
+                guess,
+            )
+        ),
+    )
+
+    lib.chkfile.dump(
+        str(checkpoint),
+        "openea/context_json",
+        canonical_json(
+            payload
+        ),
     )
 
 
@@ -774,6 +872,8 @@ def _failed_record(
     return SCFRootRecord(
         root_id=root_id,
         molecule=spec.label,
+        atom_a=spec.atom_a,
+        atom_b=spec.atom_b,
         charge=spec.charge,
         spin_2s=spec.spin_2s,
         r_angstrom=spec.r_angstrom,
@@ -971,6 +1071,10 @@ def run_scf_attempt(
             _write_final_checkpoint(
                 final_mf,
                 checkpoint,
+                spec=spec,
+                method=method,
+                root_id=root_id,
+                guess=guess,
             )
 
         except Exception as exc:
@@ -988,6 +1092,8 @@ def run_scf_attempt(
     return SCFRootRecord(
         root_id=root_id,
         molecule=spec.label,
+        atom_a=spec.atom_a,
+        atom_b=spec.atom_b,
         charge=spec.charge,
         spin_2s=spec.spin_2s,
         r_angstrom=spec.r_angstrom,

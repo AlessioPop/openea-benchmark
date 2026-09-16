@@ -257,6 +257,16 @@ def _validate_context(
             b.molecule,
         ),
         (
+            "atom_a",
+            a.atom_a,
+            b.atom_a,
+        ),
+        (
+            "atom_b",
+            a.atom_b,
+            b.atom_b,
+        ),
+        (
             "charge",
             a.charge,
             b.charge,

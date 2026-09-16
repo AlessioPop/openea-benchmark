@@ -598,9 +598,17 @@ def _assert_same_comparison_context(
     """
     fields = (
         ("molecule", a.molecule, b.molecule),
+        ("atom_a", a.atom_a, b.atom_a),
+        ("atom_b", a.atom_b, b.atom_b),
         ("charge", a.charge, b.charge),
         ("functional", a.functional, b.functional),
         ("basis", a.basis, b.basis),
+        ("reference", a.reference, b.reference),
+        (
+            "ecp_assignments",
+            a.ecp_assignments,
+            b.ecp_assignments,
+        ),
     )
 
     for name, x, y in fields:
@@ -736,19 +744,17 @@ def compare_states(
 
 def _comparison_context(
     root: SCFRootRecord,
-) -> tuple[
-    str,
-    int,
-    float,
-    str,
-    str,
-]:
+) -> tuple:
     return (
         root.molecule,
+        root.atom_a,
+        root.atom_b,
         root.charge,
         root.r_angstrom,
         root.functional,
         root.basis,
+        root.reference,
+        root.ecp_assignments,
     )
 
 
@@ -869,7 +875,7 @@ def deduplicate_roots(
         eligible.append(root)
 
     by_context: dict[
-        tuple[str, int, float, str, str],
+        tuple,
         list[SCFRootRecord],
     ] = {}
 
