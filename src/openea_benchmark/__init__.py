@@ -60,7 +60,20 @@ from .state_identity import (
     fingerprint_from_orthonormal_density,
 )
 
+from .minimum_scout import (
+    MinimumCandidate,
+    MinimumScoutResult,
+    MinimumScoutStatus,
+    MinimumScoutThresholds,
+    scout_local_pec_minimum,
+)
+
 __all__ = [
+    "MinimumCandidate",
+    "MinimumScoutResult",
+    "MinimumScoutStatus",
+    "MinimumScoutThresholds",
+    "scout_local_pec_minimum",
     "BranchComponent",
     "BranchGraph",
     "BranchComparison",
