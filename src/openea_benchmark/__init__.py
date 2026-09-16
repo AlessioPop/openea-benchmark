@@ -116,3 +116,14 @@ __all__ = [
     "run_guess_panel",
     "run_scf_attempt",
 ]
+
+from .electronic_manifold import (
+    ElectronicManifoldPoint,
+    ManifoldConstructionResult,
+    ManifoldContinuity,
+    ManifoldContinuityRelation,
+    ManifoldThresholds,
+    RejectedManifoldComponent,
+    compare_electronic_manifolds,
+    construct_electronic_manifolds,
+)
