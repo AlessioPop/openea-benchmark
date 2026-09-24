@@ -1,3 +1,113 @@
+<!-- OPENEA_GENERAL_SCOPE -->
+
+# OpenEA Benchmark
+
+**OpenEA is not a FeH-specific project.**
+
+The goal of this repository is to develop a reproducible, open-source,
+high-accuracy workflow for calculating electron affinities of
+diatomic molecules.
+
+The intended result is a workflow that can be applied to a broad range
+of neutral/anion diatomic pairs without relying on experimental
+electron affinities during the calculation and without introducing
+molecule-specific rescue rules whenever a difficult system is
+encountered.
+
+## Why does FeH currently appear so often?
+
+FeH / FeH- is the current main stress-test and validation system.
+It is not the target molecule of the project.
+
+FeH was deliberately selected because it combines many of the
+difficulties that a general diatomic electron-affinity workflow must
+eventually handle:
+
+- open-shell neutral and anion states
+- several low-lying electronic states
+- transition-metal 3d correlation
+- significant multireference character
+- strong dynamic correlation
+- difficult single-reference diagnostics
+- basis-set sensitivity
+- scalar-relativistic effects
+- spin-orbit coupling
+- state tracking along potential-energy curves
+- different electronic structures of neutral and anion
+
+In other words, FeH is being used because it is an unusually demanding
+diatomic benchmark.
+
+A workflow that can handle FeH reliably is a much stronger starting
+point for less pathological diatomics than a workflow developed only
+on simple systems.
+
+The FeH development has progressed from strongly inaccurate early
+results to a high-level value close to the experimental electron
+affinity. This makes FeH useful for identifying, separating and
+testing individual sources of error.
+
+Experimental FeH data are used only for validation.
+
+They must not be used to choose hidden roots, tune thresholds,
+select a preferred method simply because it agrees with experiment,
+or introduce FeH-specific corrections into the general workflow.
+
+## Intended workflow
+
+The general workflow under development contains roughly the following
+layers:
+
+1. electronic-state discovery
+2. determinant identity checks
+3. electronic-manifold construction
+4. state continuity along bond length
+5. potential-energy-curve construction
+6. high-level electronic correlation
+7. single-reference / multireference diagnostics
+8. basis-set convergence
+9. scalar-relativistic corrections where needed
+10. high-level geometry refinement
+11. zero-point vibrational corrections
+12. spin-orbit corrections where needed
+13. uncertainty and reliability assessment
+14. final EA or UNBOUND decision
+
+If an anion is confidently unbound, the scientifically relevant result
+is simply:
+
+    UNBOUND
+
+A precise negative electron affinity is not required.
+
+## Development philosophy
+
+The workflow should remain:
+
+- general rather than molecule-specific
+- open source
+- reproducible
+- state-aware
+- conservative when electronic identity is ambiguous
+- explicit about uncertainty
+- capable of detecting unbound anions
+- independent of experimental values during prediction
+
+FeH-specific development calculations live under:
+
+    pilots/feh_high_accuracy/
+
+They are validation and development material for the general workflow,
+not the final architecture itself.
+
+Useful project documents:
+
+- docs/WORKFLOW_SCOPE.md
+- CONTRIBUTING.md
+- pilots/feh_high_accuracy/STATUS.md
+
+---
+
 # OpenEA-Benchmark
 
 OpenEA-Benchmark is a research project for developing a fully open-source,
